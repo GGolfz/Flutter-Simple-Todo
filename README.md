@@ -1,6 +1,6 @@
 # simpletodoapp
 
-A new Flutter project.
+A new Flutter project for Midterm Mobile application tutorial.
 
 ## Getting Started
 
