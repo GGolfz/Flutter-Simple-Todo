@@ -10,8 +10,68 @@ const buttonColor = Color(0xFF73A794);
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(body: LoginPage()),
+    return MaterialApp(home: HomePage());
+  }
+}
+
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  var _current = 0;
+  void _onChangePage(page) {
+    setState(() {
+      _current = page;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: primaryColor,
+        leading: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Text(
+              _current == 0 ? "TODO" : "DONE",
+              style: TextStyle(fontSize: 20),
+            )),
+        leadingWidth: 120,
+        toolbarHeight: 40,
+      ),
+      body: Container(
+        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+        child: _current == 0
+            ? Column(
+                children: [
+                  HeaderText(
+                      titleText: "TO DO", subtitleText: "Input your list here.")
+                ],
+              )
+            : Column(
+                children: [
+                  HeaderText(titleText: "DONE", subtitleText: "Good job ! :3")
+                ],
+              ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _current,
+        selectedItemColor: buttonColor,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.add_comment), label: "Todo"),
+          BottomNavigationBarItem(icon: Icon(Icons.done), label: "Done")
+        ],
+        onTap: _onChangePage,
+      ),
+      floatingActionButton: _current == 0
+          ? FloatingActionButton(
+              backgroundColor: buttonColor,
+              onPressed: () {},
+              child: Icon(Icons.add),
+            )
+          : null,
     );
   }
 }
@@ -38,7 +98,11 @@ class LoginPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              WelcomeText(),
+              HeaderText(
+                titleText: "Welcome!",
+                subtitleText: "to login page",
+                ratio: 1.5,
+              ),
               InputText(controller: _emailController, labelText: "Email"),
               InputText(
                 controller: _passwordController,
@@ -87,17 +151,23 @@ class InputText extends StatelessWidget {
   }
 }
 
-class WelcomeText extends StatelessWidget {
+class HeaderText extends StatelessWidget {
+  final titleText;
+  final subtitleText;
+  final ratio;
+  HeaderText({this.titleText, this.subtitleText, this.ratio = 1.0});
   @override
   Widget build(BuildContext context) {
     return Container(
       child: Column(
         children: [
           Row(children: [
-            Text("Welcome!",
-                style: TextStyle(color: primaryColor, fontSize: 48))
+            Text(titleText,
+                style: TextStyle(color: primaryColor, fontSize: 32 * ratio))
           ]),
-          Row(children: [Text("to login page", style: TextStyle(fontSize: 24))])
+          Row(children: [
+            Text(subtitleText, style: TextStyle(fontSize: 16 * ratio))
+          ])
         ],
       ),
     );
