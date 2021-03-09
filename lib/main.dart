@@ -37,20 +37,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onItemStatusChange(key, status) {
-    print(key);
-    print(status);
-    // var tempList = items;
-    // var targetElement = tempList.firstWhere((element) => element.key == key);
-    // targetElement.finish = status;
-    // tempList.removeWhere((element) => element.key == key);
-    // tempList.add(targetElement);
-    // setState(() {
-    //   items = tempList;
-    // });
+    Provider.of<ApplicationState>(context, listen: false)
+        .changeItemStatus(key, status);
   }
 
   void _onAddTodo(text) {
-    print(text);
     Provider.of<ApplicationState>(context, listen: false).addItem(text);
     Navigator.of(context).pop();
   }
@@ -173,8 +164,9 @@ class _HomePageState extends State<HomePage> {
 class Todo {
   String key;
   String text;
+  String author;
   bool finish;
-  Todo({this.key, this.text, this.finish});
+  Todo({this.key, this.text, this.finish, this.author});
 }
 
 class LoginPage extends StatelessWidget {
@@ -288,10 +280,12 @@ class ListItem extends StatelessWidget {
         child: ListView(
           children: [
             ...items.map((e) => TodoItem(
-                itemKey: e.key,
-                itemText: e.text,
-                isCheck: e.finish,
-                onChange: onChange))
+                  itemKey: e.key,
+                  itemText: e.text,
+                  isCheck: e.finish,
+                  onChange: onChange,
+                  author: e.author,
+                ))
           ],
         ));
   }
@@ -302,22 +296,25 @@ class TodoItem extends StatelessWidget {
   final isCheck;
   final itemText;
   final onChange;
+  final author;
   TodoItem(
       {@required this.itemKey,
       this.isCheck = false,
       this.itemText = "",
-      this.onChange});
+      this.onChange,
+      this.author});
   @override
   Widget build(BuildContext context) {
     return ListTile(
-        leading: GestureDetector(
-          child:
-              Icon(isCheck ? Icons.check_box : Icons.check_box_outline_blank),
-          onTap: () {
-            onChange(itemKey, !isCheck);
-          },
-        ),
-        title: Text(itemText));
+      leading: GestureDetector(
+        child: Icon(isCheck ? Icons.check_box : Icons.check_box_outline_blank),
+        onTap: () {
+          onChange(itemKey, !isCheck);
+        },
+      ),
+      title: Text(itemText),
+      subtitle: Text(author),
+    );
   }
 }
 
@@ -351,7 +348,8 @@ class ApplicationState extends ChangeNotifier {
         tempTodo.add(Todo(
             finish: element.data()['finish'],
             key: element.id,
-            text: element.data()['text']));
+            text: element.data()['text'],
+            author: element.data()['author']));
       });
       todoItems = tempTodo;
       notifyListeners();
@@ -359,15 +357,24 @@ class ApplicationState extends ChangeNotifier {
   }
 
   Future<void> addItem(String text) async {
-    FirebaseFirestore.instance.collection('todos').add({
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'finish': false,
-      'text': text,
-      'author': credentials
-    });
+    try {
+      FirebaseFirestore.instance.collection('todos').add({
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'finish': false,
+        'text': text,
+        'author': credentials
+      });
+    } on FirebaseException catch (_) {}
   }
 
-  Future<void> changeItemStatus() async {}
+  Future<void> changeItemStatus(key, status) async {
+    try {
+      FirebaseFirestore.instance
+          .collection('todos')
+          .doc(key)
+          .update({'finish': status});
+    } on FirebaseException catch (_) {}
+  }
 
   Future<void> logout() async {
     await FirebaseAuth.instance.signOut();
