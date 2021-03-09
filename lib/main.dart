@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() {
   runApp(MyApp());
@@ -10,7 +13,11 @@ const buttonColor = Color(0xFF73A794);
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: HomePage());
+    return ChangeNotifierProvider(
+        create: (context) => AuthenicateProvider(),
+        builder: (context, _) => Consumer<AuthenicateProvider>(
+            builder: (ctx, auth, _) => MaterialApp(
+                home: auth.credentials != null ? HomePage() : LoginPage())));
   }
 }
 
@@ -66,6 +73,14 @@ class _HomePageState extends State<HomePage> {
             )),
         leadingWidth: 120,
         toolbarHeight: 40,
+        actions: [
+          IconButton(
+              icon: Icon(Icons.logout),
+              onPressed: () {
+                Provider.of<AuthenicateProvider>(context, listen: false)
+                    .logout();
+              })
+        ],
       ),
       body: Container(
         padding: EdgeInsets.symmetric(horizontal: 40, vertical: 30),
@@ -206,8 +221,10 @@ class LoginPage extends StatelessWidget {
         backgroundColor: buttonColor,
         child: Icon(Icons.chevron_right),
         onPressed: () {
-          print(_emailController.text);
-          print(_passwordController.text);
+          final email = _emailController.text;
+          final password = _passwordController.text;
+          Provider.of<AuthenicateProvider>(context, listen: false)
+              .login(email, password, context);
         },
       ),
     );
@@ -306,4 +323,64 @@ class TodoItem extends StatelessWidget {
         ),
         title: Text(itemText));
   }
+}
+
+class AuthenicateProvider extends ChangeNotifier {
+  String credentials;
+  AuthenicateProvider() {
+    init();
+  }
+  Future<void> init() async {
+    await Firebase.initializeApp();
+    FirebaseAuth.instance.userChanges().listen((user) {
+      if (user != null) {
+        credentials = user.email;
+      } else {
+        credentials = null;
+      }
+      notifyListeners();
+    });
+  }
+
+  Future<void> logout() async {
+    await FirebaseAuth.instance.signOut();
+    notifyListeners();
+  }
+
+  Future<void> login(
+      String email, String password, BuildContext context) async {
+    UserInfo userInfo = UserInfo(email: email, password: password);
+    try {
+      var status = await FirebaseAuth.instance
+          .fetchSignInMethodsForEmail(userInfo.email);
+      if (!status.contains('password')) {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: userInfo.email, password: userInfo.email);
+      } else {
+        try {
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+              email: userInfo.email, password: userInfo.password);
+        } on FirebaseAuthException catch (_) {
+          showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                    title: Text("Email is already used with others password"),
+                  ));
+        }
+      }
+    } on FirebaseAuthException catch (_) {
+      showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+                title: Text("Email is Invalid Format"),
+              ));
+    }
+    notifyListeners();
+  }
+}
+
+class UserInfo {
+  String email;
+  String password;
+  UserInfo({this.email, this.password});
 }
