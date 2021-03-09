@@ -21,9 +21,25 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   var _current = 0;
+  var items = [
+    Todo(finish: true, key: "1", text: "Item1"),
+    Todo(finish: false, key: "2", text: "Item2"),
+    Todo(finish: true, key: "3", text: "Item3")
+  ];
   void _onChangePage(page) {
     setState(() {
       _current = page;
+    });
+  }
+
+  void _onItemStatusChange(key, status) {
+    var tempList = items;
+    var targetElement = tempList.firstWhere((element) => element.key == key);
+    targetElement.finish = status;
+    tempList.removeWhere((element) => element.key == key);
+    tempList.add(targetElement);
+    setState(() {
+      items = tempList;
     });
   }
 
@@ -47,12 +63,30 @@ class _HomePageState extends State<HomePage> {
             ? Column(
                 children: [
                   HeaderText(
-                      titleText: "TO DO", subtitleText: "Input your list here.")
+                      titleText: "TO DO",
+                      subtitleText: "Input your list here."),
+                  SizedBox(
+                    height: 24,
+                  ),
+                  ListItem(
+                    items: items
+                        .where((element) => element.finish == false)
+                        .toList(),
+                    onChange: _onItemStatusChange,
+                  )
                 ],
               )
             : Column(
                 children: [
-                  HeaderText(titleText: "DONE", subtitleText: "Good job ! :3")
+                  HeaderText(titleText: "DONE", subtitleText: "Good job ! :3"),
+                  SizedBox(
+                    height: 24,
+                  ),
+                  ListItem(
+                      items: items
+                          .where((element) => element.finish == true)
+                          .toList(),
+                      onChange: _onItemStatusChange)
                 ],
               ),
       ),
@@ -74,6 +108,13 @@ class _HomePageState extends State<HomePage> {
           : null,
     );
   }
+}
+
+class Todo {
+  String key;
+  String text;
+  bool finish;
+  Todo({this.key, this.text, this.finish});
 }
 
 class LoginPage extends StatelessWidget {
@@ -171,5 +212,49 @@ class HeaderText extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class ListItem extends StatelessWidget {
+  final List items;
+  final Function onChange;
+  ListItem({this.items, this.onChange});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        height: 400,
+        child: ListView(
+          children: [
+            ...items.map((e) => TodoItem(
+                itemKey: e.key,
+                itemText: e.text,
+                isCheck: e.finish,
+                onChange: onChange))
+          ],
+        ));
+  }
+}
+
+class TodoItem extends StatelessWidget {
+  final itemKey;
+  final isCheck;
+  final itemText;
+  final onChange;
+  TodoItem(
+      {@required this.itemKey,
+      this.isCheck = false,
+      this.itemText = "",
+      this.onChange});
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+        leading: GestureDetector(
+          child:
+              Icon(isCheck ? Icons.check_box : Icons.check_box_outline_blank),
+          onTap: () {
+            onChange(itemKey, !isCheck);
+          },
+        ),
+        title: Text(itemText));
   }
 }
