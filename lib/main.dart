@@ -26,6 +26,7 @@ class _HomePageState extends State<HomePage> {
     Todo(finish: false, key: "2", text: "Item2"),
     Todo(finish: true, key: "3", text: "Item3")
   ];
+  var _itemController = TextEditingController();
   void _onChangePage(page) {
     setState(() {
       _current = page;
@@ -41,6 +42,15 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       items = tempList;
     });
+  }
+
+  void _onAddTodo(text) {
+    print(text);
+    setState(() {
+      items.add(
+          Todo(text: text, key: (items.length + 1).toString(), finish: false));
+    });
+    Navigator.of(context).pop();
   }
 
   @override
@@ -102,7 +112,46 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: _current == 0
           ? FloatingActionButton(
               backgroundColor: buttonColor,
-              onPressed: () {},
+              onPressed: () {
+                showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                          child: Container(
+                            width: 320,
+                            height: 240,
+                            padding: EdgeInsets.only(
+                                top: 30, left: 30, right: 30, bottom: 0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                HeaderText(
+                                  titleText: "TO DO",
+                                  subtitleText: "Input your list here.",
+                                ),
+                                InputText(
+                                    controller: _itemController,
+                                    labelText: "To do list"),
+                                Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      TextButton(
+                                          onPressed: () {
+                                            _onAddTodo(_itemController.text);
+                                            _itemController.text = '';
+                                          },
+                                          child: Text(
+                                            "DONE",
+                                            style:
+                                                TextStyle(color: primaryColor),
+                                          ))
+                                    ]),
+                              ],
+                            ),
+                          ),
+                        ));
+              },
               child: Icon(Icons.add),
             )
           : null,
