@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,8 +15,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-        create: (context) => AuthenicateProvider(),
-        builder: (context, _) => Consumer<AuthenicateProvider>(
+        create: (context) => ApplicationState(),
+        builder: (context, _) => Consumer<ApplicationState>(
             builder: (ctx, auth, _) => MaterialApp(
                 home: auth.credentials != null ? HomePage() : LoginPage())));
   }
@@ -28,11 +29,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   var _current = 0;
-  var items = [
-    Todo(finish: true, key: "1", text: "Item1"),
-    Todo(finish: false, key: "2", text: "Item2"),
-    Todo(finish: true, key: "3", text: "Item3")
-  ];
   var _itemController = TextEditingController();
   void _onChangePage(page) {
     setState(() {
@@ -41,22 +37,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onItemStatusChange(key, status) {
-    var tempList = items;
-    var targetElement = tempList.firstWhere((element) => element.key == key);
-    targetElement.finish = status;
-    tempList.removeWhere((element) => element.key == key);
-    tempList.add(targetElement);
-    setState(() {
-      items = tempList;
-    });
+    print(key);
+    print(status);
+    // var tempList = items;
+    // var targetElement = tempList.firstWhere((element) => element.key == key);
+    // targetElement.finish = status;
+    // tempList.removeWhere((element) => element.key == key);
+    // tempList.add(targetElement);
+    // setState(() {
+    //   items = tempList;
+    // });
   }
 
   void _onAddTodo(text) {
     print(text);
-    setState(() {
-      items.add(
-          Todo(text: text, key: (items.length + 1).toString(), finish: false));
-    });
+    Provider.of<ApplicationState>(context, listen: false).addItem(text);
     Navigator.of(context).pop();
   }
 
@@ -77,44 +72,45 @@ class _HomePageState extends State<HomePage> {
           IconButton(
               icon: Icon(Icons.logout),
               onPressed: () {
-                Provider.of<AuthenicateProvider>(context, listen: false)
-                    .logout();
+                Provider.of<ApplicationState>(context, listen: false).logout();
               })
         ],
       ),
-      body: Container(
-        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-        child: _current == 0
-            ? Column(
-                children: [
-                  HeaderText(
-                      titleText: "TO DO",
-                      subtitleText: "Input your list here."),
-                  SizedBox(
-                    height: 24,
-                  ),
-                  ListItem(
-                    items: items
-                        .where((element) => element.finish == false)
-                        .toList(),
-                    onChange: _onItemStatusChange,
-                  )
-                ],
-              )
-            : Column(
-                children: [
-                  HeaderText(titleText: "DONE", subtitleText: "Good job ! :3"),
-                  SizedBox(
-                    height: 24,
-                  ),
-                  ListItem(
-                      items: items
-                          .where((element) => element.finish == true)
-                          .toList(),
-                      onChange: _onItemStatusChange)
-                ],
-              ),
-      ),
+      body: Consumer<ApplicationState>(
+          builder: (ctx, appState, _) => Container(
+                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+                child: _current == 0
+                    ? Column(
+                        children: [
+                          HeaderText(
+                              titleText: "TO DO",
+                              subtitleText: "Input your list here."),
+                          SizedBox(
+                            height: 24,
+                          ),
+                          ListItem(
+                            items: appState.todoItems
+                                .where((element) => element.finish == false)
+                                .toList(),
+                            onChange: _onItemStatusChange,
+                          )
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          HeaderText(
+                              titleText: "DONE", subtitleText: "Good job ! :3"),
+                          SizedBox(
+                            height: 24,
+                          ),
+                          ListItem(
+                              items: appState.todoItems
+                                  .where((element) => element.finish == true)
+                                  .toList(),
+                              onChange: _onItemStatusChange)
+                        ],
+                      ),
+              )),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _current,
         selectedItemColor: buttonColor,
@@ -223,7 +219,7 @@ class LoginPage extends StatelessWidget {
         onPressed: () {
           final email = _emailController.text;
           final password = _passwordController.text;
-          Provider.of<AuthenicateProvider>(context, listen: false)
+          Provider.of<ApplicationState>(context, listen: false)
               .login(email, password, context);
         },
       ),
@@ -325,9 +321,10 @@ class TodoItem extends StatelessWidget {
   }
 }
 
-class AuthenicateProvider extends ChangeNotifier {
+class ApplicationState extends ChangeNotifier {
   String credentials;
-  AuthenicateProvider() {
+  List<Todo> todoItems = [];
+  ApplicationState() {
     init();
   }
   Future<void> init() async {
@@ -340,7 +337,37 @@ class AuthenicateProvider extends ChangeNotifier {
       }
       notifyListeners();
     });
+    fetchItem();
   }
+
+  Future<void> fetchItem() async {
+    FirebaseFirestore.instance
+        .collection('todos')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+      List<Todo> tempTodo = [];
+      snapshot.docs.forEach((element) {
+        tempTodo.add(Todo(
+            finish: element.data()['finish'],
+            key: element.id,
+            text: element.data()['text']));
+      });
+      todoItems = tempTodo;
+      notifyListeners();
+    });
+  }
+
+  Future<void> addItem(String text) async {
+    FirebaseFirestore.instance.collection('todos').add({
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'finish': false,
+      'text': text,
+      'author': credentials
+    });
+  }
+
+  Future<void> changeItemStatus() async {}
 
   Future<void> logout() async {
     await FirebaseAuth.instance.signOut();
