@@ -77,7 +77,7 @@ class ApplicationState extends ChangeNotifier {
           .fetchSignInMethodsForEmail(userInfo.email);
       if (!status.contains('password')) {
         await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: userInfo.email, password: userInfo.email);
+            email: userInfo.email, password: userInfo.password);
       } else {
         try {
           await FirebaseAuth.instance.signInWithEmailAndPassword(
